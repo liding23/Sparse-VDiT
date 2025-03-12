@@ -1,38 +1,24 @@
 import torch
-from torch.utils.cpp_extension import load
+import sparse_column_split  # 导入自定义的CUDA扩展模块
 
-# Load and compile the CUDA extension
-sparse_dense = load(
-    name="sparse_dense",
-    sources=["sparse_dense_matrix_multiply.cu"],
-    extra_cflags=["-O3"],
-    extra_cuda_cflags=["-O3"]
-)
+# 创建一个示例矩阵
+matrix = torch.tensor([[0, 1, 0, 3, 0],
+                       [0, 0, 2, 5, 0],
+                       [7, 0, 0, 9, 1],
+                       [0, 0, 6, 0, 0]], dtype=torch.float32).cuda()
 
-class SparseDenseMatMul(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, A, B, num_sparse_cols):
-        num_rows, num_cols = A.shape
-        num_dense_cols = num_cols - num_sparse_cols
-        C = torch.zeros((num_rows, num_cols), device=A.device, dtype=A.dtype)
+# 设置阈值
+threshold = 2
 
-        # Call the CUDA kernel
-        sparse_dense.matrix_multiply(A, B, C, num_rows, num_cols, num_sparse_cols, num_dense_cols)
+# 调用自定义CUDA扩展
+dense_matrix, sparse_matrix, sparse_col_indices = sparse_column_split.sparse_column_split_cuda(matrix, threshold)
 
-        # Save context for backward pass
-        ctx.save_for_backward(A, B)
-        ctx.num_sparse_cols = num_sparse_cols
+# 输出结果
+print("Dense matrix:")
+print(dense_matrix)
 
-        return C
+print("Sparse matrix (non-zero values only):")
+print(sparse_matrix)
 
-    @staticmethod
-    def backward(ctx, grad_output):
-        A, B = ctx.saved_tensors
-        num_sparse_cols = ctx.num_sparse_cols
-        # Compute gradients (left as an exercise if required)
-        grad_A = grad_B = None
-        return grad_A, grad_B, None
-
-# Wrapper function to integrate into PyTorch
-def sparse_dense_matmul(A, B, num_sparse_cols):
-    return SparseDenseMatMul.apply(A, B, num_sparse_cols)
+print("Sparse column indices:")
+print(sparse_col_indices)
