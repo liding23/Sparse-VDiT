@@ -1,11 +1,12 @@
 import torch
-import sparse_column_split  # 导入自定义的CUDA扩展模块
+import sparse_column_split
 
 # 创建一个示例矩阵
 matrix = torch.tensor([[0, 1, 0, 3, 0],
                        [0, 0, 2, 5, 0],
                        [7, 0, 0, 9, 1],
                        [0, 0, 6, 0, 0]], dtype=torch.float32).cuda()
+
 
 # 设置阈值
 threshold = 2
